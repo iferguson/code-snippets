@@ -63,25 +63,7 @@
                 "displayName": "Network Security Group"
             },
             "properties": {
-                "securityRules": [
-                    {
-                        "name": "Default-Deny",
-                        "properties": {
-                            "description": "Deny all inbound traffic.",
-                            "protocol": "*",
-                            "sourcePortRange": "*",
-                            "destinationPortRange": "*",
-                            "sourceAddressPrefix": "*",
-                            "destinationAddressPrefix": "*",
-                            "access": "Deny",
-                            "priority": 4096,
-                            "direction": "Inbound",
-                            "sourcePortRanges": [],
-                            "destinationPortRanges": [],
-                            "sourceAddressPrefixes": [],
-                            "destinationAddressPrefixes": []
-                        }
-                    },
+                "securityRules": [                   
                     {
                         "name": "Allow-home-traffic-to-ElkBox",
                         "properties": {
@@ -121,11 +103,11 @@
                     {
                         "name": "Allow-Filebeat-to-elk",
                         "properties": {
-                            "description": "Allow SSH to all servers from the ElkBox",
+                            "description": "Allow Filebeat on the DVWA VN to the ElkBox",
                             "protocol": "*",
                             "sourcePortRange": "*",
                             "destinationPortRange": "9200",
-                            "sourceAddressPrefix": "[parameters('JumpBoxStaticIP')]",
+                            "sourceAddressPrefix": "10.1.0.0/24",
                             "destinationAddressPrefix": "VirtualNetwork",
                             "access": "Allow",
                             "priority": 300,
