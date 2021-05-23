@@ -1,0 +1,262 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "VmUserName": {
+            "defaultValue": "azureuser",
+            "type": "String"
+        },
+        "JumpBoxVmName": {
+            "defaultValue": "[concat('Jump-Box-Provisioner-', substring(uniqueString(resourceGroup().id),0,4))]",
+            "type": "String"
+        },
+        "DeployRegion": {
+            "defaultValue": "[resourceGroup().location]",
+            "type": "String"
+        },
+        "JumpBoxVmSize": {
+            "defaultValue": "Standard_B1s",
+            "type": "String"
+        },
+        "JumpBoxStaticIP": {
+            "defaultValue": "10.1.0.150",
+            "type": "String"
+        },
+        "VnetNameWeb": {
+            "defaultValue": "vn-01",
+            "type": "String"
+        },
+        "VnetWebRg": {
+            "defaultValue": "dev-vnets-rg",
+            "type": "String"
+        },
+        "SshPublicKey": {
+            "type": "securestring"
+        },
+        "HomeIP": {
+            "type": "String"
+        },
+        "Environment": {
+            "type": "String"
+        }
+    },
+    "variables": {
+        "JumpBoxNicName": "[concat(parameters('JumpBoxVmName'),'-nic')]",
+        "JumpBoxPipName": "[concat(parameters('JumpBoxVmName'),'-pip')]",
+        "NsgNameId": "[extensionResourceId(resourceGroup().Id , 'Microsoft.Network/networkSecurityGroups', variables('NsgName'))]",
+        "NsgName": "JumpBox-SG"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "2020-11-01",
+            "name": "[variables('NsgName')]",
+            "location": "[parameters('DeployRegion')]",
+            "dependsOn": [],
+            "tags": {
+                "env": "[parameters('Environment')]",
+                "displayName": "Network Security Group"
+            },
+            "properties": {
+                "securityRules": [
+                    {
+                        "name": "Default-Deny",
+                        "properties": {
+                            "description": "Deny all inbound traffic.",
+                            "protocol": "*",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "*",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Deny",
+                            "priority": 4096,
+                            "direction": "Inbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": []
+                        }
+                    },
+                    {
+                        "name": "Allow-home-traffic-to-jumpbox-ssh",
+                        "properties": {
+                            "description": "Allow SSH traffic from home to the JumpBox",
+                            "protocol": "*",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "22",
+                            "sourceAddressPrefix": "[parameters('HomeIP')]",
+                            "destinationAddressPrefix": "[parameters('JumpBoxStaticIP')]",
+                            "access": "Allow",
+                            "priority": 100,
+                            "direction": "Inbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": []
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/publicIPAddresses",
+            "apiVersion": "2020-11-01",
+            "name": "[variables('JumpBoxPipName')]",
+            "location": "[parameters('DeployRegion')]",
+            "tags": {
+                "env": "[parameters('Environment')]",
+                "displayName": "PIP"
+            },
+            "sku": {
+                "name": "Basic",
+                "tier": "Regional"
+            },
+            "properties": {
+                "publicIPAddressVersion": "IPv4",
+                "publicIPAllocationMethod": "Static"
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2020-12-01",
+            "name": "[parameters('JumpBoxVmName')]",
+            "location": "[parameters('DeployRegion')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/networkInterfaces', variables('JumpBoxNicName'))]"
+            ],
+            "tags": {
+                "env": "[parameters('Environment')]",
+                "displayName": "VM"
+            },
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "[parameters('JumpBoxVmSize')]"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "Canonical",
+                        "offer": "UbuntuServer",
+                        "sku": "18.04-LTS",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "osType": "Linux",
+                        "name": "[concat(parameters('JumpBoxVmName'), '_OsDisk_01')]",
+                        "createOption": "FromImage",
+                        "caching": "ReadWrite",
+                        "diskSizeGB": 30
+                    },
+                    "dataDisks": []
+                },
+                "osProfile": {
+                    "computerName": "[parameters('JumpBoxVmName')]",
+                    "adminUsername": "[parameters('VmUserName')]",
+                    "linuxConfiguration": {
+                        "disablePasswordAuthentication": true,
+                        "ssh": {
+                            "publicKeys": [
+                                {
+                                    "path": "[concat('/home/', parameters('VmUserName'), '/.ssh/authorized_keys')]",
+                                    "keyData": "[parameters('SshPublicKey')]"
+                                }
+                            ]
+                        },
+                        "provisionVMAgent": true,
+                        "patchSettings": {
+                            "patchMode": "ImageDefault"
+                        }
+                    }
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('JumpBoxNicName'))]"
+                        }
+                    ]
+                },
+                "diagnosticsProfile": {
+                    "bootDiagnostics": {
+                        "enabled": true
+                    }
+                }
+            }
+        },
+        {
+            "type": "microsoft.devtestlab/schedules",
+            "apiVersion": "2018-09-15",
+            "name": "[concat('shutdown-computevm-', parameters('JumpBoxVmName'))]",
+            "location": "[parameters('DeployRegion')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines', parameters('JumpBoxVmName'))]"
+            ],
+            "tags": {
+                "env": "[parameters('Environment')]",
+                "displayName": "Scheduled Shutdown"
+            },
+            "properties": {
+                "status": "Enabled",
+                "taskType": "ComputeVmShutdownTask",
+                "dailyRecurrence": {
+                    "time": "2200"
+                },
+                "timeZoneId": "AUS Eastern Standard Time",
+                "notificationSettings": {
+                    "status": "Disabled",
+                    "timeInMinutes": 30,
+                    "notificationLocale": "en"
+                },
+                "targetResourceId": "[resourceId('Microsoft.Compute/virtualMachines', parameters('JumpBoxVmName'))]"
+            }
+        },
+        {
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2020-11-01",
+            "name": "[variables('JumpBoxNicName')]",
+            "location": "[parameters('DeployRegion')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', variables('JumpBoxPipName'))]"
+            ],
+            "tags": {
+                "env": "[parameters('Environment')]",
+                "displayName": "NIC"
+            },
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            "privateIPAllocationMethod": "Static",
+                            "publicIPAddress": {
+                                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('JumpBoxPipName'))]"
+                            },
+                            "subnet": {
+                                "id": "[resourceId(parameters('VnetWebRg'),'Microsoft.Network/virtualNetworks/subnets', parameters('VnetNameWeb'), 'default')]"
+                            },
+                            "primary": true,
+                            "privateIPAddressVersion": "IPv4",
+                            "privateIPAddress": "[parameters('JumpBoxStaticIP')]"
+                        }
+                    }
+                ],
+                "dnsSettings": {
+                    "dnsServers": []
+                },
+                "enableAcceleratedNetworking": false,
+                "enableIPForwarding": false,
+                "networkSecurityGroup": {
+                    "id": "[variables('NsgNameId')]"
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "JumpBoxPublicIP": {
+            "type": "string",
+            "value": "[reference(variables('JumpBoxPipName')).IpAddress]"
+        },
+        "JumpBoxLocalIP": {
+            "type": "string",
+            "value": "[reference(resourceId('Microsoft.Network/networkInterfaces',variables('JumpBoxNicName'))).ipConfigurations[0].properties.privateIPAddress]"
+        }
+    }
+}

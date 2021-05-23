@@ -1,0 +1,415 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "VmUserName": {
+            "defaultValue": "azureuser",
+            "type": "String"
+        },
+        "WebVmNameGroup1": {
+            "defaultValue": "Web",
+            "type": "String"
+        },
+        "DeployRegion": {
+            "defaultValue": "[resourceGroup().location]",
+            "type": "String"
+        },
+        "WebVmSize": {
+            "defaultValue": "Standard_B1s",
+            "type": "String"
+        },
+        "JumpBoxStaticIP": {
+            "defaultValue": "10.1.0.150",
+            "type": "String"
+        },
+        "VnetNameWeb": {
+            "defaultValue": "vn-01",
+            "type": "String"
+        },
+        "VnetWebRg": {
+            "type": "String"
+        },
+        "SshPublicKeyAnsible": {
+            "type": "securestring"
+        },
+        "HomeIP": {
+            "type": "String"
+        },
+        "Environment": {
+            "type": "String"
+        }
+    },
+    "variables": {
+        "WebGroup1UniqueId": "[substring(uniqueString(resourceGroup().id),0,4)]",
+        "WebGroup1VmCount": 3,
+        "NsgNameId": "[extensionResourceId(resourceGroup().Id , 'Microsoft.Network/networkSecurityGroups', variables('NsgName'))]",
+        "NsgName": "dvwa-sg",
+        "AvailabilitySetName": "dvwa-as",
+        "LbName": "dvwa-lb",
+        "LBPipName": "[concat(variables('LbName'),'-pip')]",
+        "LbProbeName": "dvwa-probe",
+        "LbBackendPoolName": "dvwa-pool",
+        "StaticIps": [
+            "10.1.0.160",
+            "10.1.0.170",
+            "10.1.0.180",
+            "10.1.0.190"
+        ]
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "2020-11-01",
+            "name": "[variables('NsgName')]",
+            "location": "[parameters('DeployRegion')]",
+            "dependsOn": [],
+            "tags": {
+                "displayName": "Network Security Group",
+                "env": "[parameters('Environment')]"
+            },
+            "properties": {
+                "securityRules": [
+                    {
+                        "name": "Default-Deny",
+                        "properties": {
+                            "description": "Deny all inbound traffic.",
+                            "protocol": "*",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "*",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Deny",
+                            "priority": 4096,
+                            "direction": "Inbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": []
+                        }
+                    },
+                    {
+                        "name": "Allow-SSH-From-JumpBox",
+                        "properties": {
+                            "description": "Allow SSH to all servers from the Jumpbox",
+                            "protocol": "*",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "22",
+                            "sourceAddressPrefix": "[parameters('JumpBoxStaticIP')]",
+                            "destinationAddressPrefix": "VirtualNetwork",
+                            "access": "Allow",
+                            "priority": 200,
+                            "direction": "Inbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": []
+                        }
+                    },
+                    {
+                        "name": "Allow-Home-Web-Servers-80",
+                        "properties": {
+                            "description": "Allow traffic from home to port 80.",
+                            "protocol": "TCP",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "80",
+                            "sourceAddressPrefix": "[parameters('HomeIP')]",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 300,
+                            "direction": "Inbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": []
+                        }
+                    },
+                    {
+                        "name": "Allow-LB-VN-80",
+                        "properties": {
+                            "description": "Allow traffic from Load Balancer to the Virtual Network on port 80.",
+                            "protocol": "TCP",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "80",
+                            "sourceAddressPrefix": "AzureLoadBalancer",
+                            "destinationAddressPrefix": "VirtualNetwork",
+                            "access": "Allow",
+                            "priority": 310,
+                            "direction": "Inbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": []
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2020-12-01",
+            "name": "[concat(parameters('WebVmNameGroup1'), '-', copyIndex(1), '-', variables('WebGroup1UniqueId'))]",
+            "location": "[parameters('DeployRegion')]",
+            "copy": {
+                "name": "VMGroup",
+                "count": "[variables('WebGroup1VmCount')]"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/networkInterfaces', concat(parameters('WebVmNameGroup1'), '-', copyIndex(1), '-', variables('WebGroup1UniqueId'),'-nic'))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('NsgName'))]",
+                "[resourceId('Microsoft.Compute/availabilitySets', variables('AvailabilitySetName'))]"
+            ],
+            "tags": {
+                "env": "[parameters('Environment')]",
+                "displayName": "VM"
+            },
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "[parameters('WebVmSize')]"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "Canonical",
+                        "offer": "UbuntuServer",
+                        "sku": "18.04-LTS",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "osType": "Linux",
+                        "name": "[concat(parameters('WebVmNameGroup1'), '-', copyIndex(1), '-', variables('WebGroup1UniqueId'), '_OsDisk_01')]",
+                        "createOption": "FromImage",
+                        "caching": "ReadWrite",
+                        "diskSizeGB": 30
+                    },
+                    "dataDisks": []
+                },
+                "availabilitySet": {
+                    "id": "[resourceId('Microsoft.Compute/availabilitySets', variables('AvailabilitySetName'))]"
+                },
+                "osProfile": {
+                    "computerName": "[concat(parameters('WebVmNameGroup1'), '-', copyIndex(1), '-', variables('WebGroup1UniqueId'))]",
+                    "adminUsername": "[parameters('VmUserName')]",
+                    "linuxConfiguration": {
+                        "disablePasswordAuthentication": true,
+                        "ssh": {
+                            "publicKeys": [
+                                {
+                                    "path": "[concat('/home/', parameters('VmUserName'), '/.ssh/authorized_keys')]",
+                                    "keyData": "[parameters('SshPublicKeyAnsible')]"
+                                }
+                            ]
+                        },
+                        "provisionVMAgent": true,
+                        "patchSettings": {
+                            "patchMode": "ImageDefault"
+                        }
+                    }
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', concat(parameters('WebVmNameGroup1'), '-', copyIndex(1), '-', variables('WebGroup1UniqueId'), '-nic'))]"
+                        }
+                    ]
+                },
+                "diagnosticsProfile": {
+                    "bootDiagnostics": {
+                        "enabled": true
+                    }
+                }
+            }
+        },
+        {
+            "type": "microsoft.devtestlab/schedules",
+            "apiVersion": "2018-09-15",
+            "name": "[concat('shutdown-computevm-', concat(parameters('WebVmNameGroup1'), '-', copyIndex(1), '-', variables('WebGroup1UniqueId')))]",
+            "location": "[parameters('DeployRegion')]",
+            "copy": {
+                "name": "VMGroup1Schedule",
+                "count": "[variables('WebGroup1VmCount')]"
+            },
+            "tags": {
+                "env": "[parameters('Environment')]",
+                "displayName": "Shutdown Schedule"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines', concat(parameters('WebVmNameGroup1'), '-', copyIndex(1), '-', variables('WebGroup1UniqueId')))]"
+            ],
+            "properties": {
+                "status": "Enabled",
+                "taskType": "ComputeVmShutdownTask",
+                "dailyRecurrence": {
+                    "time": "2200"
+                },
+                "timeZoneId": "AUS Eastern Standard Time",
+                "notificationSettings": {
+                    "status": "Disabled",
+                    "timeInMinutes": 30,
+                    "notificationLocale": "en"
+                },
+                "targetResourceId": "[resourceId('Microsoft.Compute/virtualMachines', concat(parameters('WebVmNameGroup1'), '-', copyIndex(1), '-', variables('WebGroup1UniqueId')))]"
+            }
+        },
+        {
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2020-11-01",
+            "name": "[concat(parameters('WebVmNameGroup1'), '-', copyIndex(1), '-', variables('WebGroup1UniqueId'),'-nic')]",
+            "location": "[parameters('DeployRegion')]",
+            "copy": {
+                "name": "VMGroup1Nics",
+                "count": "[variables('WebGroup1VmCount')]"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/loadBalancers', variables('LbName'))]"
+            ],
+            "tags": {
+                "env": "[parameters('Environment')]",
+                "displayName": "Nic"
+            },
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            "privateIPAllocationMethod": "Static",
+                            "subnet": {
+                                "id": "[resourceId(parameters('VnetWebRg'), 'Microsoft.Network/virtualNetworks/subnets', parameters('VnetNameWeb'), 'default')]"
+                            },
+                            "primary": true,
+                            "privateIPAddressVersion": "IPv4",
+                            "privateIPAddress": "[variables('StaticIps')[copyIndex()]]",
+                            "loadBalancerBackendAddressPools": [
+                                {
+                                    "id": "[resourceId('Microsoft.Network/loadBalancers/backendAddressPools', variables('LbName'), variables('LbBackendPoolName'))]"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "dnsSettings": {
+                    "dnsServers": []
+                },
+                "enableAcceleratedNetworking": false,
+                "enableIPForwarding": false,
+                "networkSecurityGroup": {
+                    "id": "[variables('NsgNameId')]"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Compute/availabilitySets",
+            "apiVersion": "2020-12-01",
+            "name": "[variables('AvailabilitySetName')]",
+            "location": "[parameters('DeployRegion')]",
+            "tags": {
+                "env": "[parameters('Environment')]",
+                "displayName": "Availability Set"
+            },
+            "dependsOn": [
+            ],
+            "sku": {
+                "name": "Aligned"
+            },
+            "properties": {
+                "platformUpdateDomainCount": 5,
+                "platformFaultDomainCount": 2
+            }
+        },
+        {
+            "type": "Microsoft.Network/publicIPAddresses",
+            "apiVersion": "2020-11-01",
+            "name": "[variables('LBPipName')]",
+            "location": "[parameters('DeployRegion')]",
+            "tags": {
+                "env": "[parameters('Environment')]",
+                "displayName": "Load Balancer PIP"
+            },
+            "sku": {
+                "name": "Basic",
+                "tier": "Regional"
+            },
+            "properties": {
+                "publicIPAddressVersion": "IPv4",
+                "publicIPAllocationMethod": "Static"
+            }
+        },
+        {
+            "type": "Microsoft.Network/loadBalancers",
+            "apiVersion": "2020-11-01",
+            "name": "[variables('LbName')]",
+            "location": "[parameters('DeployRegion')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', variables('LBPipName'))]"
+            ],
+            "sku": {
+                "name": "Basic",
+                "tier": "Regional"
+            },
+            "tags": {
+                "env": "[parameters('Environment')]",
+                "displayName": "Load Balancer"
+            },
+            "properties": {
+                "frontendIPConfigurations": [
+                    {
+                        "name": "LoadBalancerFrontEnd",
+                        "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "publicIPAddress": {
+                                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('LBPipName'))]"
+                            },
+                            "privateIPAddressVersion": "IPv4"
+                        }
+                    }
+                ],
+                "backendAddressPools": [
+                    {
+                        "name": "[variables('LbBackendPoolName')]",
+                        "properties": {}
+                    }
+                ],
+                "loadBalancingRules": [
+                    {
+                        "name": "[concat(variables('LbName'), '-Rule')]",
+                        "properties": {
+                            "frontendIPConfiguration": {
+                                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('LbName')), '/frontendIPConfigurations/LoadBalancerFrontEnd')]"
+                            },
+                            "frontendPort": 80,
+                            "backendPort": 80,
+                            "enableFloatingIP": false,
+                            "idleTimeoutInMinutes": 4,
+                            "protocol": "Tcp",
+                            "enableTcpReset": false,
+                            "loadDistribution": "Default",
+                            "backendAddressPool": {
+                                "id": "[resourceId('Microsoft.Network/loadBalancers/backendAddressPools', variables('LbName'), variables('LbBackendPoolName'))]"
+                            },
+                            "probe": {
+                                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('LbName')), '/probes/', variables('LbProbeName'))]"
+                            }
+                        }
+                    }
+                ],
+                "probes": [
+                    {
+                        "name": "[variables('LbProbeName')]",
+                        "properties": {
+                            "protocol": "Tcp",
+                            "port": 80,
+                            "intervalInSeconds": 5,
+                            "numberOfProbes": 2
+                        }
+                    }
+                ],
+                "inboundNatRules": [],
+                "inboundNatPools": []
+            }
+        }
+    ],
+    "outputs": {
+        "LoadBalancerIP": {
+            "type": "string",
+            "value": "[reference(variables('LBPipName')).IpAddress]"
+        }
+    }
+}

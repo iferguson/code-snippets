@@ -1,0 +1,15 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "SshPublicKey": {
+            "value": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDWKvUeLRf/lbBC0G1FKNnUtoNIhLjOzWWGYu73gKUEJJUCM5ApDBEkkjn9/O+xUuRarGVcC68QOLMAY4uM2L+RCzQXVcisKP8973tVh+TH2bQuOg4kO4sZVi1PScKywfJtiOu6iuzN6ggpwWEHZukNc1IHHQcpBHI7/ZbOc+FxDrGoBdrV7fGPwXZN0KUHmwurA7Xp7tditb9sddFNoJunS0t2CE1l6gJZrLr4uVAG1lTd+Q/8wiB9n3nmOQPDBvcjduv/Hx0co2IJ/xCBHqp/zVVdiyB+zDhvZsx4aehxAgf1135UU8yTARWosEcvN0DXPU6aRT1W64M5qQYzYvPbhD3Np6/aUIBOYiGSqclBw3cN0iJjL2TVy5jVSa6OkaIY7T0rGb7oO20lfB1EIyZly5/wwMXumaNRAD52TVY/Gd32DRnBIxv1bXpoSLLF/wqcDMtzOWxkFoDY/++FzuVhxkC4TnTn5lHwk/46in/SC8IP4hZNiWNahocg7+9STvE="
+        },
+        "HomeIP": {
+            "value": "123.243.216.148"
+        },
+        "Environment": {
+            "value": "Dev"
+        }
+    }
+}

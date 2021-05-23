@@ -1,0 +1,15 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "SshPublicKeyAnsible": {
+            "value": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC9uw1Z7GDUYY6fj5Q1K1jixiZtuvGNnkxaj6AZ5pSIRQ69a45NSAk/LMMbWxXjhR2UHKuMrtBrGN0jgMd+WgXc+RL+6KUjI9kNBdfJhKfpOCJHVqfCOS9TJjL724CKzwVsCUh5rWXvVp7cOTzp4hQovelzwG3mpYL+1fdRBvn8BePY8R6upUUPPk+Q8k7TNfExM+4WNuTsFDFKJWngk77uC4RG1L0SV/pEv79DRtiwmpSughCyRpR0l3zu18lzUMC+CH4vpvJM3ckJmBCnC43zfFjOVnQg4DeOVrZEUqxplDlX7be5qS/wGrH1/9AR2orwNb/4VcsDXIRit7joQlHT"
+        },
+        "HomeIP": {
+            "value": "123.243.216.148"
+        },
+        "Environment": {
+            "value": "Dev"
+        }
+    }
+}

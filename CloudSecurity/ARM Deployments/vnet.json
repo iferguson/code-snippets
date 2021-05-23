@@ -1,0 +1,143 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "DeployRegionWeb": {
+            "defaultValue": "[resourceGroup().location]",
+            "type": "String"
+        },
+        "DeployRegionElk": {
+            "defaultValue": "[resourceGroup().location]",
+            "type": "String"
+        },
+        "VnetAddressSpaceWeb": {
+            "defaultValue": "10.1.0.0/16",
+            "type": "String"
+        },
+        "SubnetDefailtAddressPrefixWeb": {
+            "defaultValue": "10.1.0.0/24",
+            "type": "String"
+        },
+        "VnetAddressSpaceElk": {
+            "defaultValue": "10.2.0.0/16",
+            "type": "String"
+        },
+        "SubnetDefailtAddressPrefixElk": {
+            "defaultValue": "10.2.0.0/24",
+            "type": "String"
+        },
+          "VnetNameWeb": {
+            "defaultValue": "vn-01",
+            "type": "String"
+        },
+          "VnetNameElk": {
+            "defaultValue": "vn-02",
+            "type": "String"
+        },
+        "Environment" : {
+            "type": "String"
+        }       
+    },
+    "variables": {       
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2020-11-01",
+            "name": "[parameters('VnetNameWeb')]",
+            "location": "[parameters('DeployRegionWeb')]",
+            "tags" : {
+                "env" : "[parameters('Environment')]",
+                "displayName":"Web VN"
+            },
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[parameters('VnetAddressSpaceWeb')]"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "default",
+                        "properties": {
+                            "addressPrefix": "[parameters('SubnetDefailtAddressPrefixWeb')]",
+                            "delegations": [],
+                            "privateEndpointNetworkPolicies": "Enabled",
+                            "privateLinkServiceNetworkPolicies": "Enabled"
+                        }
+                    }
+                ],
+                "virtualNetworkPeerings": [],
+                "enableDdosProtection": false
+            }
+        },
+        {
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2020-11-01",
+            "name": "[parameters('VnetNameElk')]",
+            "location": "[parameters('DeployRegionElk')]",
+            "tags" : {
+                "env" : "[parameters('Environment')]",
+                "displayName":"Elk VN"
+            },
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[parameters('VnetAddressSpaceElk')]"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "default",
+                        "properties": {
+                            "addressPrefix": "[parameters('SubnetDefailtAddressPrefixElk')]",
+                            "delegations": [],
+                            "privateEndpointNetworkPolicies": "Enabled",
+                            "privateLinkServiceNetworkPolicies": "Enabled"
+                        }
+                    }
+                ],
+                "virtualNetworkPeerings": [],
+                "enableDdosProtection": false
+            }
+        },
+        {
+            "apiVersion": "2019-11-01",
+            "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+            "name": "[concat(parameters('VnetNameElk'), '/', parameters('VnetNameElk'), '-to-', parameters('VnetNameWeb'))]",
+            "location": "[parameters('DeployRegionElk')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('VnetNameElk'))]"
+            ],
+            "properties": {
+                "allowVirtualNetworkAccess": true,
+                "allowForwardedTraffic": false,
+                "allowGatewayTransit": false,
+                "useRemoteGateways": false,
+                "remoteVirtualNetwork": {
+                    "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('VnetNameWeb'))]"
+                }
+            }
+        },
+        {
+            "apiVersion": "2019-11-01",
+            "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+            "name": "[concat(parameters('VnetNameWeb'), '/', parameters('VnetNameWeb'), '-to-', parameters('VnetNameElk'))]",
+            "location": "[parameters('DeployRegionWeb')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('VnetNameWeb'))]"
+            ],
+            "properties": {
+                "allowVirtualNetworkAccess": true,
+                "allowForwardedTraffic": false,
+                "allowGatewayTransit": false,
+                "useRemoteGateways": false,
+                "remoteVirtualNetwork": {
+                    "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('VnetNameElk'))]"
+                }
+            }
+        }
+    ],
+    "outputs": {
+    }
+}

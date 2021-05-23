@@ -1,0 +1,303 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "VmUserName": {
+            "defaultValue": "azureuser",
+            "type": "String"
+        },
+        "ElkBoxVmName": {
+            "defaultValue": "[concat('vm-elk-', substring(uniqueString(resourceGroup().id),0,4))]",
+            "type": "String"
+        },
+        "DeployRegion": {
+            "defaultValue": "[resourceGroup().location]",
+            "type": "String"
+        },
+        "ElkBoxVmSize": {
+            "defaultValue": "Standard_B2s",
+            "type": "String"
+        },
+
+        "ElkBoxStaticIP": {
+            "defaultValue": "10.2.0.100",
+            "type": "String"
+        },
+        "JumpBoxStaticIP": {
+            "defaultValue": "10.1.0.150",
+            "type": "String"
+        },
+        "SshPublicKeyAnsible": {
+            "type": "securestring"
+        },
+        "HomeIP": {
+            "type": "String"
+        },
+        "VneElkRg": {
+            "type": "String",
+            "defaultValue": "dev-vnets-rg"
+        },
+        "VnetNameElk": {
+            "defaultValue": "vn-02",
+            "type": "String"
+        },
+        "Environment": {
+            "type": "String"
+        }
+    },
+    "variables": {
+        "ElkBoxNicName": "[concat(parameters('ElkBoxVmName'),'-nic')]",
+        "ElkBoxPipName": "[concat(parameters('ElkBoxVmName'),'-pip')]",
+        "NsgNameId": "[extensionResourceId(resourceGroup().Id , 'Microsoft.Network/networkSecurityGroups', variables('NsgName'))]",
+        "NsgName": "elk-sg"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "2020-11-01",
+            "name": "[variables('NsgName')]",
+            "location": "[parameters('DeployRegion')]",
+            "dependsOn": [],
+            "tags": {
+                "env": "[parameters('Environment')]",
+                "displayName": "Network Security Group"
+            },
+            "properties": {
+                "securityRules": [
+                    {
+                        "name": "Default-Deny",
+                        "properties": {
+                            "description": "Deny all inbound traffic.",
+                            "protocol": "*",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "*",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Deny",
+                            "priority": 4096,
+                            "direction": "Inbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": []
+                        }
+                    },
+                    {
+                        "name": "Allow-home-traffic-to-ElkBox",
+                        "properties": {
+                            "description": "Allow traffic from home to the ElkBox",
+                            "protocol": "*",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "*",
+                            "sourceAddressPrefix": "[parameters('HomeIP')]",
+                            "destinationAddressPrefix": "[parameters('ElkBoxStaticIP')]",
+                            "access": "Allow",
+                            "priority": 100,
+                            "direction": "Inbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": []
+                        }
+                    },
+                    {
+                        "name": "Allow-SSH-From-JumpBox",
+                        "properties": {
+                            "description": "Allow SSH to all servers from the ElkBox",
+                            "protocol": "*",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "22",
+                            "sourceAddressPrefix": "[parameters('JumpBoxStaticIP')]",
+                            "destinationAddressPrefix": "VirtualNetwork",
+                            "access": "Allow",
+                            "priority": 200,
+                            "direction": "Inbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": []
+                        }
+                    },
+                    {
+                        "name": "Allow-Filebeat-to-elk",
+                        "properties": {
+                            "description": "Allow SSH to all servers from the ElkBox",
+                            "protocol": "*",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "9200",
+                            "sourceAddressPrefix": "[parameters('JumpBoxStaticIP')]",
+                            "destinationAddressPrefix": "VirtualNetwork",
+                            "access": "Allow",
+                            "priority": 300,
+                            "direction": "Inbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": []
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/publicIPAddresses",
+            "apiVersion": "2020-11-01",
+            "name": "[variables('ElkBoxPipName')]",
+            "location": "[parameters('DeployRegion')]",
+            "tags": {
+                "env": "[parameters('Environment')]",
+                "displayName": "Pip"
+            },
+            "sku": {
+                "name": "Basic",
+                "tier": "Regional"
+            },
+            "properties": {
+                "publicIPAddressVersion": "IPv4",
+                "publicIPAllocationMethod": "Static"
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2020-12-01",
+            "name": "[parameters('ElkBoxVmName')]",
+            "location": "[parameters('DeployRegion')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/networkInterfaces', variables('ElkBoxNicName'))]"
+            ],
+            "tags": {
+                "env": "[parameters('Environment')]",
+                "displayName": "VM"
+            },
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "[parameters('ElkBoxVmSize')]"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "Canonical",
+                        "offer": "UbuntuServer",
+                        "sku": "18.04-LTS",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "osType": "Linux",
+                        "name": "[concat(parameters('ElkBoxVmName'), '_OsDisk_01')]",
+                        "createOption": "FromImage",
+                        "caching": "ReadWrite",
+                        "diskSizeGB": 30
+                    },
+                    "dataDisks": []
+                },
+                "osProfile": {
+                    "computerName": "[parameters('ElkBoxVmName')]",
+                    "adminUsername": "[parameters('VmUserName')]",
+                    "linuxConfiguration": {
+                        "disablePasswordAuthentication": true,
+                        "ssh": {
+                            "publicKeys": [
+                                {
+                                    "path": "[concat('/home/', parameters('VmUserName'), '/.ssh/authorized_keys')]",
+                                    "keyData": "[parameters('SshPublicKeyAnsible')]"
+                                }
+                            ]
+                        },
+                        "provisionVMAgent": true,
+                        "patchSettings": {
+                            "patchMode": "ImageDefault"
+                        }
+                    }
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('ElkBoxNicName'))]"
+                        }
+                    ]
+                },
+                "diagnosticsProfile": {
+                    "bootDiagnostics": {
+                        "enabled": true
+                    }
+                }
+            }
+        },
+        {
+            "type": "microsoft.devtestlab/schedules",
+            "apiVersion": "2018-09-15",
+            "name": "[concat('shutdown-computevm-', parameters('ElkBoxVmName'))]",
+            "location": "[parameters('DeployRegion')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines', parameters('ElkBoxVmName'))]"
+            ],
+            "tags": {
+                "env": "[parameters('Environment')]",
+                "displayName": "Scheduled Shutdown"
+            },
+            "properties": {
+                "status": "Enabled",
+                "taskType": "ComputeVmShutdownTask",
+                "dailyRecurrence": {
+                    "time": "2200"
+                },
+                "timeZoneId": "AUS Eastern Standard Time",
+                "notificationSettings": {
+                    "status": "Disabled",
+                    "timeInMinutes": 30,
+                    "notificationLocale": "en"
+                },
+                "targetResourceId": "[resourceId('Microsoft.Compute/virtualMachines', parameters('ElkBoxVmName'))]"
+            }
+        },
+        {
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2020-11-01",
+            "name": "[variables('ElkBoxNicName')]",
+            "location": "[parameters('DeployRegion')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', variables('ElkBoxPipName'))]"
+            ],
+            "tags": {
+                "env": "[parameters('Environment')]",
+                "displayName": "NIC"
+            },
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            "privateIPAllocationMethod": "Static",
+                            "publicIPAddress": {
+                                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('ElkBoxPipName'))]"
+                            },
+                            "subnet": {
+                                "id": "[resourceId(parameters('VneElkRg'), 'Microsoft.Network/virtualNetworks/subnets', parameters('VnetNameElk'), 'default')]"
+                            },
+                            "primary": true,
+                            "privateIPAddressVersion": "IPv4",
+                            "privateIPAddress": "[parameters('ElkBoxStaticIP')]"
+                        }
+                    }
+                ],
+                "dnsSettings": {
+                    "dnsServers": []
+                },
+                "enableAcceleratedNetworking": false,
+                "enableIPForwarding": false,
+                "networkSecurityGroup": {
+                    "id": "[variables('NsgNameId')]"
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "ElkBoxPublicIP": {
+            "type": "string",
+            "value": "[reference(variables('ElkBoxPipName')).IpAddress]"
+        },
+        "ElkBoxLocalIP": {
+            "type": "string",
+            "value": "[reference(resourceId('Microsoft.Network/networkInterfaces',variables('ElkBoxNicName'))).ipConfigurations[0].properties.privateIPAddress]"
+        }
+    }
+}
