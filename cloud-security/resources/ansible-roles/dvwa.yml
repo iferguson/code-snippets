@@ -1,0 +1,8 @@
+---
+- hosts: webservers
+  become: yes
+  ignore_unreachable: true
+  roles:
+  - role: webservers
+  - role: filebeat
+  - role: metricbeat

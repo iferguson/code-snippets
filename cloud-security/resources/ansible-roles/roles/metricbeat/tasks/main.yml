@@ -1,0 +1,39 @@
+- name: Download metricbeat
+  vars: 
+          metricbeat_file_name : metricbeat-7.6.1-amd64.deb
+  get_url:
+          url: https://artifacts.elastic.co/downloads/beats/metricbeat/{{ metricbeat_file_name }}
+          dest: /tmp/{{ metricbeat_file_name }}
+          mode: "777"
+
+  # Use command module
+- name: install metricbeat
+  vars: 
+          metricbeat_file_name : metricbeat-7.6.1-amd64.deb
+  command: dpkg -i --force-confnew /tmp/{{ metricbeat_file_name }}
+
+  # Use copy module
+- name: drop in metricbeat config
+  copy:
+    src: /etc/ansible/roles/metricbeat/files/metricbeat-config.yml
+    dest: /etc/metricbeat/metricbeat.yml
+
+  # Use command module
+- name: enable and configure docker module for metric beat
+  command: metricbeat modules enable docker
+
+  # Use command module
+- name: setup metric beat
+  command: metricbeat setup
+
+  # Use command module
+- name: start metric beat
+  ansible.builtin.service:
+          name: metricbeat
+          state: started
+
+  # Use systemd module
+- name: Enable service metricbeat on boot
+  systemd:
+    name: metricbeat
+    enabled: yes

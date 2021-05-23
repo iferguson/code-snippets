@@ -14,7 +14,7 @@
             "defaultValue": "10.1.0.0/16",
             "type": "String"
         },
-        "SubnetDefailtAddressPrefixWeb": {
+        "SubnetdefaultAddressPrefixWeb": {
             "defaultValue": "10.1.0.0/24",
             "type": "String"
         },
@@ -22,7 +22,7 @@
             "defaultValue": "10.2.0.0/16",
             "type": "String"
         },
-        "SubnetDefailtAddressPrefixElk": {
+        "SubnetdefaultAddressPrefixElk": {
             "defaultValue": "10.2.0.0/24",
             "type": "String"
         },
@@ -60,7 +60,7 @@
                     {
                         "name": "default",
                         "properties": {
-                            "addressPrefix": "[parameters('SubnetDefailtAddressPrefixWeb')]",
+                            "addressPrefix": "[parameters('SubnetdefaultAddressPrefixWeb')]",
                             "delegations": [],
                             "privateEndpointNetworkPolicies": "Enabled",
                             "privateLinkServiceNetworkPolicies": "Enabled"
@@ -90,7 +90,7 @@
                     {
                         "name": "default",
                         "properties": {
-                            "addressPrefix": "[parameters('SubnetDefailtAddressPrefixElk')]",
+                            "addressPrefix": "[parameters('SubnetdefaultAddressPrefixElk')]",
                             "delegations": [],
                             "privateEndpointNetworkPolicies": "Enabled",
                             "privateLinkServiceNetworkPolicies": "Enabled"
