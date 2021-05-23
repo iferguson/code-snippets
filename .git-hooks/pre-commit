@@ -4,7 +4,7 @@ CHANGED=$(git diff-index --name-only HEAD -- cloud-security/resources/ansible-ro
 if [ -n "$CHANGED" ];
 then
         echo "Ansible files have been updated so will create a new archive"
-        git archive --output=cloud-security/resources/ansible-roles.tar.gz --format=tar.gz HEAD:cloud-security/resources/ansible-roles/ --prefix=./
+        git archive --output=cloud-security/resources/ansible-roles.tar.gz --format=tar.gz HEAD cloud-security/resources/ansible-roles/ --prefix=./
         git add cloud-security/resources/ansible-roles.tar.gz
         exit 0
 else
