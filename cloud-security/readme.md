@@ -224,11 +224,41 @@ When done it should look like this:
 
 ## Ansible Scripts for configuring the VMS
 
+Run the following to download the Ansible playbooks and unpack them into the `/etc/ansible` folder
+
+```bash
+cd /etc/ansible && curl -L -o ansible-roles.tar.gz https://github.com/iferguson/code-snippets/raw/cloud-security/cloud-security/resources/ansible-roles.tar.gz && tar -zxf ansible-roles.tar.gz
+```
 
 
-### DVWA
 
 ### ELK
 
+To run the ansible role for ELK Server
 
+``` bash
+cd /etc/ansible && ansible-playbook elk.yml
+```
+
+_Note: This must be run before running the DVWA role as the filebeat and metricbeat installs need to talk back to the Elastic sea_
+
+### DVWA
+
+To run the ansible role for DVWA 
+
+``` bash
+cd /etc/ansible && ansible-playbook dvwa.yml
+```
+
+
+
+
+
+### All Servers
+
+To run the ansible role for all Servers the site.yml playbook is configured to run both the DVWA and ELK playbooks
+
+``` bash
+cd /etc/ansible && ansible-playbook elk.yml
+```
 
