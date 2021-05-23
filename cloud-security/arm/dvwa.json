@@ -6,7 +6,7 @@
             "defaultValue": "azureuser",
             "type": "String"
         },
-        "WebVmNameGroup1": {
+        "WebVmName": {
             "defaultValue": "Web",
             "type": "String"
         },
@@ -22,11 +22,21 @@
             "defaultValue": "10.1.0.150",
             "type": "String"
         },
+        "NumberOfWebVms": {
+            "defaultValue": 3,
+            "minValue": 1,
+            "maxValue": 10,
+            "type": "int",
+            "metadata": {
+                "description": "The number of Web VMs to be created.  1 to 10"
+            }
+        },
         "VnetNameWeb": {
             "defaultValue": "vn-01",
             "type": "String"
         },
         "VnetWebRg": {
+            "defaultValue": "dev-vnets-rg",
             "type": "String"
         },
         "SshPublicKeyAnsible": {
@@ -40,8 +50,8 @@
         }
     },
     "variables": {
-        "WebGroup1UniqueId": "[substring(uniqueString(resourceGroup().id),0,4)]",
-        "WebGroup1VmCount": 3,
+        "WebGroupUniqueId": "[substring(uniqueString(resourceGroup().id),0,4)]",
+        "WebGroupVmCount": "[parameters('NumberOfWebVms')]",
         "NsgNameId": "[extensionResourceId(resourceGroup().Id , 'Microsoft.Network/networkSecurityGroups', variables('NsgName'))]",
         "NsgName": "dvwa-sg",
         "AvailabilitySetName": "dvwa-as",
@@ -53,7 +63,13 @@
             "10.1.0.160",
             "10.1.0.170",
             "10.1.0.180",
-            "10.1.0.190"
+            "10.1.0.190",
+            "10.1.0.191",
+            "10.1.0.192",
+            "10.1.0.193",
+            "10.1.0.194",
+            "10.1.0.195",
+            "10.1.0.196"
         ]
     },
     "resources": [
@@ -147,14 +163,14 @@
         {
             "type": "Microsoft.Compute/virtualMachines",
             "apiVersion": "2020-12-01",
-            "name": "[concat(parameters('WebVmNameGroup1'), '-', copyIndex(1), '-', variables('WebGroup1UniqueId'))]",
+            "name": "[concat(parameters('WebVmName'), '-', copyIndex(1), '-', variables('WebGroupUniqueId'))]",
             "location": "[parameters('DeployRegion')]",
             "copy": {
                 "name": "VMGroup",
-                "count": "[variables('WebGroup1VmCount')]"
+                "count": "[variables('WebGroupVmCount')]"
             },
             "dependsOn": [
-                "[resourceId('Microsoft.Network/networkInterfaces', concat(parameters('WebVmNameGroup1'), '-', copyIndex(1), '-', variables('WebGroup1UniqueId'),'-nic'))]",
+                "[resourceId('Microsoft.Network/networkInterfaces', concat(parameters('WebVmName'), '-', copyIndex(1), '-', variables('WebGroupUniqueId'),'-nic'))]",
                 "[resourceId('Microsoft.Network/networkSecurityGroups', variables('NsgName'))]",
                 "[resourceId('Microsoft.Compute/availabilitySets', variables('AvailabilitySetName'))]"
             ],
@@ -175,7 +191,7 @@
                     },
                     "osDisk": {
                         "osType": "Linux",
-                        "name": "[concat(parameters('WebVmNameGroup1'), '-', copyIndex(1), '-', variables('WebGroup1UniqueId'), '_OsDisk_01')]",
+                        "name": "[concat(parameters('WebVmName'), '-', copyIndex(1), '-', variables('WebGroupUniqueId'), '_OsDisk_01')]",
                         "createOption": "FromImage",
                         "caching": "ReadWrite",
                         "diskSizeGB": 30
@@ -186,7 +202,7 @@
                     "id": "[resourceId('Microsoft.Compute/availabilitySets', variables('AvailabilitySetName'))]"
                 },
                 "osProfile": {
-                    "computerName": "[concat(parameters('WebVmNameGroup1'), '-', copyIndex(1), '-', variables('WebGroup1UniqueId'))]",
+                    "computerName": "[concat(parameters('WebVmName'), '-', copyIndex(1), '-', variables('WebGroupUniqueId'))]",
                     "adminUsername": "[parameters('VmUserName')]",
                     "linuxConfiguration": {
                         "disablePasswordAuthentication": true,
@@ -207,7 +223,7 @@
                 "networkProfile": {
                     "networkInterfaces": [
                         {
-                            "id": "[resourceId('Microsoft.Network/networkInterfaces', concat(parameters('WebVmNameGroup1'), '-', copyIndex(1), '-', variables('WebGroup1UniqueId'), '-nic'))]"
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', concat(parameters('WebVmName'), '-', copyIndex(1), '-', variables('WebGroupUniqueId'), '-nic'))]"
                         }
                     ]
                 },
@@ -221,18 +237,18 @@
         {
             "type": "microsoft.devtestlab/schedules",
             "apiVersion": "2018-09-15",
-            "name": "[concat('shutdown-computevm-', concat(parameters('WebVmNameGroup1'), '-', copyIndex(1), '-', variables('WebGroup1UniqueId')))]",
+            "name": "[concat('shutdown-computevm-', concat(parameters('WebVmName'), '-', copyIndex(1), '-', variables('WebGroupUniqueId')))]",
             "location": "[parameters('DeployRegion')]",
             "copy": {
                 "name": "VMGroup1Schedule",
-                "count": "[variables('WebGroup1VmCount')]"
+                "count": "[variables('WebGroupVmCount')]"
             },
             "tags": {
                 "env": "[parameters('Environment')]",
                 "displayName": "Shutdown Schedule"
             },
             "dependsOn": [
-                "[resourceId('Microsoft.Compute/virtualMachines', concat(parameters('WebVmNameGroup1'), '-', copyIndex(1), '-', variables('WebGroup1UniqueId')))]"
+                "[resourceId('Microsoft.Compute/virtualMachines', concat(parameters('WebVmName'), '-', copyIndex(1), '-', variables('WebGroupUniqueId')))]"
             ],
             "properties": {
                 "status": "Enabled",
@@ -246,17 +262,17 @@
                     "timeInMinutes": 30,
                     "notificationLocale": "en"
                 },
-                "targetResourceId": "[resourceId('Microsoft.Compute/virtualMachines', concat(parameters('WebVmNameGroup1'), '-', copyIndex(1), '-', variables('WebGroup1UniqueId')))]"
+                "targetResourceId": "[resourceId('Microsoft.Compute/virtualMachines', concat(parameters('WebVmName'), '-', copyIndex(1), '-', variables('WebGroupUniqueId')))]"
             }
         },
         {
             "type": "Microsoft.Network/networkInterfaces",
             "apiVersion": "2020-11-01",
-            "name": "[concat(parameters('WebVmNameGroup1'), '-', copyIndex(1), '-', variables('WebGroup1UniqueId'),'-nic')]",
+            "name": "[concat(parameters('WebVmName'), '-', copyIndex(1), '-', variables('WebGroupUniqueId'),'-nic')]",
             "location": "[parameters('DeployRegion')]",
             "copy": {
                 "name": "VMGroup1Nics",
-                "count": "[variables('WebGroup1VmCount')]"
+                "count": "[variables('WebGroupVmCount')]"
             },
             "dependsOn": [
                 "[resourceId('Microsoft.Network/loadBalancers', variables('LbName'))]"
