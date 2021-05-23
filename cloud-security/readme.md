@@ -15,7 +15,7 @@ This mini project sets up an Azure environment containing:
 
 
 
-
+![](images\network-diagram.png)
 
 
 
