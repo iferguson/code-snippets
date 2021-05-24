@@ -1,6 +1,19 @@
 # Azure Security 
 
-[TOC]
+  * [Keep track of key details](#keep-track-of-key-details)
+  * [Deploying the Azure Infrastructure](#deploying-the-azure-infrastructure)
+    + [Creating the VNET](#creating-the-vnet)
+    + [Creating the Jumpbox VM](#creating-the-jumpbox-vm)
+    + [Creating the DVWAs VMs](#creating-the-dvwas-vms)
+    + [Creating the ELK Stack VMs](#creating-the-elk-stack-vms)
+  * [Setting up Ansible on the JumpBox](#setting-up-ansible-on-the-jumpbox)
+      - [Setting up Docker and Ansible Container](#setting-up-docker-and-ansible-container)
+      - [Setup the ansible Private SSH Key](#setup-the-ansible-private-ssh-key)
+      - [Configure Ansible](#configure-ansible)
+  * [Ansible Scripts for configuring the VMS](#ansible-scripts-for-configuring-the-vms)
+    + [ELK](#elk)
+    + [DVWA](#dvwa)
+    + [All Servers](#all-servers)
 
 
 ---
@@ -216,7 +229,7 @@ When done it should look like this:
 * set the SSH Private key being used
   `ansible_ssh_private_key_file=~/.ssh/ansible`
 * When done it will look something like this:
-  ![](images/ansible-h.png)
+  ![](images/ansible-hosts.png)
 
 
 
@@ -227,7 +240,7 @@ When done it should look like this:
 Run the following to download the Ansible playbooks and unpack them into the `/etc/ansible` folder
 
 ```bash
-cd /etc/ansible && curl -L -o ansible-roles.tar.gz https://github.com/iferguson/code-snippets/raw/cloud-security/cloud-security/resources/ansible-roles.tar.gz && tar -zxf ansible-roles.tar.gz
+cd /etc/ansible && curl -L -o ansible-roles.tar.gz https://github.com/iferguson/code-snippets/raw/m/cloud-security/resources/ansible-roles.tar.gz && tar -zxf ansible-roles.tar.gz
 ```
 
 
