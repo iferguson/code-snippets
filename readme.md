@@ -20,15 +20,6 @@ Or copy the content of `.git-hooks` into `.git/hooks/`
 
 
 
-* [Hooks](#hooks)
-* [Cloud Security](#cloud-security)
-* [Shell Scripts](#shell-scripts)
-* [Capture The Flags](#capture-the-flags)
-
-
-
-
-
 ## Cloud Security
 
  [cloud-security](cloud-security) 

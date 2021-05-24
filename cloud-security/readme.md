@@ -272,6 +272,6 @@ cd /etc/ansible && ansible-playbook dvwa.yml
 To run the ansible role for all Servers the site.yml playbook is configured to run both the DVWA and ELK playbooks
 
 ``` bash
-cd /etc/ansible && ansible-playbook elk.yml
+cd /etc/ansible && ansible-playbook site.yml
 ```
 
