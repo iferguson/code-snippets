@@ -37,19 +37,23 @@ This mini project sets up an Azure environment containing:
 
 
 
-To help keep track of important detail you can use this table and fill in the values as you move through the steps
+To help keep track of important details you can use this table and fill in the values as you move through the steps
 
-| Parameter             | Default Value                              | Your Value |
-| --------------------- | ------------------------------------------ | ---------- |
-| Jumpbox Public VM     | -                                          |            |
-| Jumpbox Internal IP   | 10.1.0.150                                 |            |
-| DVWA Load Balancer IP | -                                          |            |
-| DVWA Internal IPs     | 10.1.0.160<br />10.1.0.170<br />10.1.0.180 |            |
-| ELK VM Public IP      | -                                          |            |
-| ELK VM Internal IP    | 10.2.0.100                                 |            |
-|                       |                                            |            |
-|                       |                                            |            |
-|                       |                                            |            |
+| Parameter              | Default Value                              | Your Value |
+| ---------------------- | ------------------------------------------ | ---------- |
+| Jumpbox Public VM      | -                                          |            |
+| Jumpbox Internal IP    | 10.1.0.150                                 |            |
+| DVWA Load Balancer IP  | -                                          |            |
+| DVWA Internal IPs      | 10.1.0.160<br />10.1.0.170<br />10.1.0.180 |            |
+| ELK VM Public IP       | -                                          |            |
+| ELK VM Internal IP     | 10.2.0.100                                 |            |
+| VM User Name           | azureuser                                  |            |
+| Jumpbox public SSH key | -                                          |            |
+| Ansible public SSH key | -                                          |            |
+
+
+
+
 
 
 
